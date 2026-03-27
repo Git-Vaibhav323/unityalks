@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6DMN1FHBTT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-6DMN1FHBTT');
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="UniTalks is a modern college social platform for students in India — an Omegle alternative to meet peers, make friends, and chat in text, voice, or video. Safe, fast, and free." />
+    <meta name="keywords" content="college social platform, college chat, omegle alternative, text chat, voice chat, video chat, meet students, india students, unitalks" />
+    <meta name="robots" content="index,follow" />
+    <title>UniTalks — College Social Platform for Students</title>
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="UniTalks — College Social Platform for Students" />
+    <meta property="og:description" content="A college social platform for students in India — an Omegle alternative to meet peers and chat in text, voice, or video." />
+    <meta property="og:image" content="%PUBLIC_URL%/assets/logos/logo.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="UniTalks Logo in Spotify Green" />
+    <meta property="og:site_name" content="UniTalks" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="UniTalks — College Social Platform for Students" />
+    <meta name="twitter:description" content="College social platform for students in India — Omegle alternative for text, voice & video chat." />
+    <meta name="twitter:image" content="%PUBLIC_URL%/assets/logos/logo.png" />
+    <meta name="twitter:image:alt" content="UniTalks Logo in Spotify Green" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="%PUBLIC_URL%/" />
+    <link rel="icon" type="image/png" href="%PUBLIC_URL%/assets/logos/favicon.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/assets/logos/favicon.png" />
+    
+    <!-- Fonts: Inter + Manrope -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="%PUBLIC_URL%/performance.css">
+    
+    <!-- Global Styles -->
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html, body {
+        background-color: #000000 !important;
+        color: #ffffff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        background-color: #000000 !important;
+        min-height: 100vh;
+      }
+      
+      /* Ensure no white backgrounds anywhere */
+      * {
+        background-color: transparent !important;
+      }
+      
+      /* Override any potential white backgrounds */
+      div, section, article, main, aside, nav, header, footer {
+        background-color: transparent !important;
+      }
+      
+      /* Ensure form elements have dark backgrounds */
+      input, textarea, select, button {
+        background-color: rgba(0,0,0,0.6) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(29,185,84,0.35) !important;
+      }
+      
+      /* Hide scrollbars but keep scrolling functionality */
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: transparent;
+      }
+      
+      /* For Firefox */
+      html {
+        scrollbar-width: none;
+      }
+      
+      /* For IE and Edge */
+      body {
+        -ms-overflow-style: none;
+      }
+    </style>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "UniTalks",
+        "url": "%PUBLIC_URL%/",
+        "description": "College social platform for students in India — Omegle alternative for text, voice & video chat.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "%PUBLIC_URL%/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

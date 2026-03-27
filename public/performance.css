@@ -1,0 +1,98 @@
+/* Performance optimizations for low-powered devices */
+
+/* Reduce animations for low-powered devices */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Optimize for mobile devices */
+@media (max-width: 768px) {
+  /* Reduce complex gradients */
+  .complex-gradient {
+    background: #000000 !important;
+  }
+  
+  /* Simplify box shadows */
+  .complex-shadow {
+    box-shadow: none !important;
+  }
+  
+  /* Disable backdrop filters on mobile */
+  .backdrop-filter {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* Optimize for low memory devices */
+@media (max-width: 480px) {
+  /* Reduce font loading */
+  @font-face {
+    font-family: 'Inter';
+    font-display: swap;
+  }
+  
+  /* Simplify animations */
+  * {
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
+  }
+}
+
+/* Optimize for slow connections */
+@media (prefers-reduced-data: reduce) {
+  /* Disable complex backgrounds */
+  .complex-bg {
+    background: #000000 !important;
+  }
+  
+  /* Disable animations */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Hardware acceleration for better performance */
+.performance-optimized {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Reduce paint complexity */
+.simple-paint {
+  contain: layout style paint;
+}
+
+/* Optimize scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Reduce layout thrashing */
+.stable-layout {
+  contain: layout;
+}
+
+/* Optimize images */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Reduce repaints */
+.no-repaint {
+  transform: translateZ(0);
+  will-change: auto;
+}
+
