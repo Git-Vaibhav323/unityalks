@@ -26,7 +26,9 @@ export type ClientMessage =
   | { type: 'fun-request'; game: string }
   | { type: 'fun-accept'; game: string }
   | { type: 'fun-reject' }
-  | { type: 'fun-exit' };
+  | { type: 'fun-exit' }
+  | { type: 'test-join-room'; roomId: string }
+  | { type: 'test-broadcast'; roomId: string; data?: unknown };
 
 export type ServerMessage =
   | { type: 'ready'; userId: string }

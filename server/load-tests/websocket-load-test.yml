@@ -1,0 +1,31 @@
+config:
+  target: "http://localhost:8080"
+  phases:
+    - name: "warm-up"
+      duration: 30
+      arrivalRate: 1
+      rampTo: 10
+    - name: "ramp-up"
+      duration: 60
+      arrivalRate: 10
+      rampTo: 100
+    - name: "stress"
+      duration: 60
+      arrivalRate: 100
+    - name: "spike"
+      duration: 60
+      arrivalRate: 100
+      rampTo: 350
+  processor: "./processor.js"
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+    ensure:
+      thresholds:
+        - "ws.app_latency_ms.p99 < 1000"
+
+scenarios:
+  - name: "ws user lifecycle (token -> connect -> join -> validate -> leave)"
+    flow:
+      - function: "wsLifecycle"
+      - think: 1

@@ -1,0 +1,32 @@
+config:
+  target: "http://localhost:8080"
+  processor: "./processor.js"
+  phases:
+    - name: "warm-up"
+      duration: 30
+      arrivalRate: 1
+      rampTo: 10
+    - name: "ramp-up"
+      duration: 60
+      arrivalRate: 10
+      rampTo: 100
+    - name: "stress"
+      duration: 60
+      arrivalRate: 100
+    - name: "spike"
+      duration: 60
+      arrivalRate: 100
+      rampTo: 350
+  plugins:
+    metrics-by-endpoint: {}
+    ensure:
+      thresholds:
+        # Relaxed local threshold to allow host noise.
+        - "ws.app_latency_ms.p99 < 5000"
+        - "vusers.failed < 20000"
+
+scenarios:
+  - name: "local ws lifecycle"
+    flow:
+      - function: "wsLifecycle"
+      - think: 1

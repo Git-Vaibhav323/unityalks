@@ -1,0 +1,34 @@
+config:
+  target: "https://staging.yourdomain.com"
+  processor: "./processor.js"
+  phases:
+    - name: "warm-up"
+      duration: 60
+      arrivalRate: 5
+      rampTo: 25
+    - name: "ramp-up"
+      duration: 120
+      arrivalRate: 25
+      rampTo: 120
+    - name: "stress"
+      duration: 180
+      arrivalRate: 120
+    - name: "spike"
+      duration: 90
+      arrivalRate: 120
+      rampTo: 400
+  plugins:
+    metrics-by-endpoint: {}
+    ensure:
+      # CI gate requested by user.
+      p99: 1000
+      maxErrorRate: 1
+      thresholds:
+        - "ws.app_latency_ms.p99 < 1000"
+        - "vusers.failed == 0"
+
+scenarios:
+  - name: "staging ws lifecycle (wss)"
+    flow:
+      - function: "wsLifecycle"
+      - think: 1

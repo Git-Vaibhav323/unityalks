@@ -1,11 +1,8 @@
-import { WebSocket } from 'ws';
 import { redis } from '../config/redis';
 import { UserState, Session, UserRecord } from '../types';
 import { logger } from '../utils/logger';
 
 export class StateManager {
-  private sockets = new Map<string, WebSocket>();
-
   // Rate limiting constants - relaxed for better UX
   private readonly MAX_SKIPS_PER_MINUTE = 50; // Allow more skips for testing/normal use
   private readonly SKIP_COOLDOWN_MS = 60000;
@@ -14,13 +11,12 @@ export class StateManager {
   // 1️⃣ USER MANAGEMENT
   // ═══════════════════════════════════════════════════════════════
 
-  async addUser(userId: string, ws: import('ws').WebSocket): Promise<void> {
+  async addUser(userId: string): Promise<void> {
     const existing = await this.getUser(userId);
     if (existing) {
       await this.removeUser(userId);
     }
 
-    this.sockets.set(userId, ws);
     await redis.hmset(`user:${userId}`, {
       userId,
       state: UserState.IDLE,
@@ -42,7 +38,6 @@ export class StateManager {
     }
 
     await this.dequeueUser(userId);
-    this.sockets.delete(userId);
     await redis.del(`usersession:${userId}`, `user:${userId}`);
     logger.info(`User removed: ${userId}`);
   }
@@ -52,7 +47,7 @@ export class StateManager {
     if (!data || !data.userId) return undefined;
     return {
       userId: data.userId,
-      ws: this.sockets.get(userId),
+      ws: undefined,
       state: data.state as UserState,
       sessionId: data.sessionId || undefined,
       lastPong: parseInt(data.lastPong || '0', 10),
@@ -441,7 +436,7 @@ export class StateManager {
     };
   }
 
-  getSocket(userId: string): WebSocket | undefined {
-    return this.sockets.get(userId);
+  getSocket(_userId: string): undefined {
+    return undefined;
   }
 }

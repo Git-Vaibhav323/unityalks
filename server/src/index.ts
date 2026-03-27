@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { createServer } from 'http';
+import os from 'os';
 import { WebSocketServer } from 'ws';
 import { env } from './config/env';
 import { redis } from './config/redis';
@@ -8,6 +10,7 @@ import { verifyToken } from './config/jwt';
 import authRoutes from './routes/auth';
 import { MatchmakingService } from './services/matchmaking';
 import { StateManager } from './services/stateManager';
+import { SocketRegistry } from './socket/SocketRegistry';
 import { generateTurnCredentials } from './services/turnCredentials';
 import { WorkerMessagingService } from './services/workerMessaging';
 import { ClientMessage, ServerMessage } from './types';
@@ -16,10 +19,6 @@ import { logger } from './utils/logger';
 const app = express();
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
-
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 app.use('/api/auth', authRoutes);
 app.get('/api/turn-credentials', (req, res) => {
@@ -40,6 +39,27 @@ app.get('/api/turn-credentials', (req, res) => {
 
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+const instanceId = process.env.INSTANCE_ID ?? `${os.hostname()}-${process.pid}`;
+
+app.get('/health', async (_req, res) => {
+  try {
+    const redisConnections = await socketRegistry.totalConnected();
+    res.json({
+      status: 'ok',
+      localConnections: wss.clients.size,
+      redisConnections,
+      instanceId,
+    });
+  } catch (error) {
+    logger.error('Failed to build /health payload:', error);
+    res.status(500).json({
+      status: 'error',
+      localConnections: wss.clients.size,
+      redisConnections: -1,
+      instanceId,
+    });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // 🏗️ SYSTEM INITIALIZATION - Following Omegle Architecture
@@ -47,8 +67,9 @@ const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
 const stateManager = new StateManager();
 const matchmaking = new MatchmakingService(stateManager);
+const socketRegistry = new SocketRegistry(redis, instanceId);
 const workerMessaging = new WorkerMessagingService(async (userId, message) => {
-  const socket = stateManager.getSocket(userId);
+  const socket = await socketRegistry.getUserSocket(userId);
   if (!socket || socket.readyState !== socket.OPEN) {
     return false;
   }
@@ -171,6 +192,8 @@ async function handleMatchSuccess(userA: string, userB: string, sessionId: strin
     return;
   }
 
+  await socketRegistry.assignUserToRoom(userA, sessionId);
+  await socketRegistry.assignUserToRoom(userB, sessionId);
   logger.info(`🎯 ${mode} Match sent: ${userA} <-> ${userB} (session: ${sessionId})`);
 }
 
@@ -192,6 +215,8 @@ async function handleUserDisconnect(userId: string): Promise<void> {
     
     // End session and requeue partner
     if (user.sessionId) {
+      await socketRegistry.unassignUserFromRoom(userId, user.sessionId);
+      await socketRegistry.unassignUserFromRoom(partner, user.sessionId);
       await stateManager.endSession(user.sessionId, userId);
     }
     
@@ -208,7 +233,6 @@ async function handleUserDisconnect(userId: string): Promise<void> {
   }
 
   // Remove user completely
-  await workerMessaging.removeSocketOwner(userId);
   await stateManager.removeUser(userId);
   logger.info(`👋 User disconnected: ${userId}`);
   } finally {
@@ -222,6 +246,7 @@ async function handleUserDisconnect(userId: string): Promise<void> {
 
 wss.on('connection', async (ws, request) => {
   let userId: string;
+  const socketId = randomUUID();
   
   try {
     // Authentication
@@ -237,8 +262,8 @@ wss.on('connection', async (ws, request) => {
 
     // Bind handlers immediately so early client messages are not dropped.
     const setupPromise = (async () => {
-      await stateManager.addUser(userId, ws);
-      await workerMessaging.setSocketOwner(userId);
+      await socketRegistry.register(socketId, userId, ws, { mode: 'video' });
+      await stateManager.addUser(userId);
       await send(userId, { type: 'ready', userId });
       logger.info(`🔌 User connected: ${userId}`);
     })();
@@ -356,11 +381,19 @@ wss.on('connection', async (ws, request) => {
         // 5️⃣ SKIP PARTNER - Skip Rules Implementation
         // ───────────────────────────────────────────────────────────
         case 'skip': {
+          const currentSession = await stateManager.getUserSession(userId);
           const skipResult = await stateManager.handleSkip(userId);
           
           if (!skipResult.success) {
             await send(userId, { type: 'error', message: skipResult.reason || 'Cannot skip' });
             break;
+          }
+
+          if (currentSession) {
+            await socketRegistry.unassignUserFromRoom(userId, currentSession.sessionId);
+            if (skipResult.partner) {
+              await socketRegistry.unassignUserFromRoom(skipResult.partner, currentSession.sessionId);
+            }
           }
 
           // Notify partner they were skipped
@@ -392,6 +425,7 @@ wss.on('connection', async (ws, request) => {
         // 6️⃣ LEAVE SYSTEM - Disconnect Rules
         // ───────────────────────────────────────────────────────────
         case 'leave': {
+          await socketRegistry.unregister(socketId);
           await handleUserDisconnect(userId);
           break;
         }
@@ -441,6 +475,31 @@ wss.on('connection', async (ws, request) => {
           break;
         }
 
+        case 'test-join-room': {
+          const payload = message as { roomId?: string };
+          if (!payload.roomId) {
+            await send(userId, { type: 'error', message: 'roomId is required' });
+            break;
+          }
+          await socketRegistry.assignUserToRoom(userId, payload.roomId);
+          await send(userId, { type: 'queue', position: 1 });
+          break;
+        }
+
+        case 'test-broadcast': {
+          const payload = message as { roomId?: string; data?: unknown };
+          if (!payload.roomId) {
+            await send(userId, { type: 'error', message: 'roomId is required' });
+            break;
+          }
+          await socketRegistry.broadcast(payload.roomId, {
+            type: 'test-broadcast',
+            from: userId,
+            data: payload.data ?? null,
+          });
+          break;
+        }
+
         default: {
           await send(userId, { type: 'error', message: `Unsupported message type: ${(message as any).type}` });
         }
@@ -453,12 +512,14 @@ wss.on('connection', async (ws, request) => {
     // ═══════════════════════════════════════════════════════════════
 
     ws.on('close', async (code, reason) => {
+      await socketRegistry.unregister(socketId);
       await handleUserDisconnect(userId);
       logger.info(`🔌 Connection closed: ${userId} (${code}: ${reason})`);
     });
 
     ws.on('error', async (error) => {
       logger.error(`🔌 WebSocket error for ${userId}:`, error);
+      await socketRegistry.unregister(socketId);
       await handleUserDisconnect(userId);
     });
 
@@ -531,6 +592,10 @@ async function gracefulShutdown(signal: string) {
     }
   });
 
+  await socketRegistry.unregisterAllLocal();
+  await socketRegistry.stop();
+  await workerMessaging.stop();
+
   // Close HTTP server
   httpServer.close(() => {
     logger.info('📴 Server shutdown complete');
@@ -561,7 +626,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // 🚀 SERVER STARTUP
 // ═══════════════════════════════════════════════════════════════
 
-workerMessaging.start().then(() => {
+Promise.all([workerMessaging.start(), socketRegistry.start()]).then(() => {
   httpServer.listen(env.port, () => {
     logger.info(`🚀 UniTalks Server started`);
     logger.info(`📡 HTTP server: http://localhost:${env.port}`);
@@ -574,6 +639,6 @@ workerMessaging.start().then(() => {
     logger.info('🎉 Ready to match users following Omegle-like rules!');
   });
 }).catch((error) => {
-  logger.error('Failed to start worker messaging:', error);
+  logger.error('Failed to start messaging services:', error);
   process.exit(1);
 });
